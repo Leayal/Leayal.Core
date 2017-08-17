@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3DCD41BD-C295-4BD1-B675-AEDC9FCBFA1A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Leayal</RootNamespace>
+    <AssemblyName>Leayal.Core</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>
+    </DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.IO.RecyclableMemoryStream, Version=1.2.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.IO.RecyclableMemoryStream.1.2.2\lib\net40\Microsoft.IO.RecyclableMemoryStream.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System" />
+    <Reference Include="System.Management" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AppInfo.cs" />
+    <Compile Include="ArrayHelper.cs" />
+    <Compile Include="ByteHelper.cs" />
+    <Compile Include="Ini\DuplicatedKeyCollection.cs" />
+    <Compile Include="Ini\DuplicatedKeyInfo.cs" />
+    <Compile Include="Ini\IniReadErrorEventArgs.cs" />
+    <Compile Include="IO\CacheStream.cs" />
+    <Compile Include="IO\PathHelper.cs" />
+    <Compile Include="IO\RecyclableMemoryStream.cs" />
+    <Compile Include="Log\Enums.cs" />
+    <Compile Include="MoreMath.cs" />
+    <Compile Include="NativeMethods.cs" />
+    <Compile Include="Net\CacheResponse.cs" />
+    <Compile Include="Net\DownloadFileProgressChangedEventArgs.cs" />
+    <Compile Include="Net\DownloadInfo.cs" />
+    <Compile Include="Net\DownloadInfoCollection.cs" />
+    <Compile Include="Net\DownloadToMemoryCompletedEventArgs.cs" />
+    <Compile Include="Net\WebClient.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Net\ExtendedWebClient.cs" />
+    <Compile Include="Net\HttpWebRequestHeaders.cs" />
+    <Compile Include="OSVersionInfo.cs" />
+    <Compile Include="Ini\IniFile.cs" />
+    <Compile Include="Ini\IniKeyValue.cs" />
+    <Compile Include="Ini\IniSection.cs" />
+    <Compile Include="IO\DirectoryHelper.cs" />
+    <Compile Include="Log\Logger.cs" />
+    <Compile Include="Log\LogManager.cs" />
+    <Compile Include="Net\CacheInfo.cs" />
+    <Compile Include="Net\CacheStorage.cs" />
+    <Compile Include="Net\CacheWriteProgressChangedEventArgs.cs" />
+    <Compile Include="NumberHelper.cs" />
+    <Compile Include="BytesConverter.cs" />
+    <Compile Include="ProcessHelper.cs" />
+    <Compile Include="Security\Cryptography\MD5Wrapper.cs" />
+    <Compile Include="Security\Cryptography\SHA1Wrapper.cs" />
+    <Compile Include="Security\Cryptography\SHA256Wrapper.cs" />
+    <Compile Include="IO\Permission.cs" />
+    <Compile Include="Shell\Explorer.cs" />
+    <Compile Include="Shell\Shortcut.cs" />
+    <Compile Include="StringHelper.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UriHelper.cs" />
+    <Compile Include="WMI\ProcessParent.cs" />
+    <Compile Include="WMI\ProcessWatcher.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="Shell32">
+      <Guid>{50A7E9B0-70EF-11D1-B75A-00A0C90564FE}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+      <Private>False</Private>
+    </COMReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
