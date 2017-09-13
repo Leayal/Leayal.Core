@@ -8,7 +8,6 @@ namespace Leayal
 {
     public static class AppInfo
     {
-        private static System.Threading.SynchronizationContext _mainsynchronizationcontext = System.Threading.SynchronizationContext.Current;
         internal static RecyclableMemoryStreamManager _MemoryStreamManager;
         public static RecyclableMemoryStreamManager MemoryStreamManager
         {
@@ -19,17 +18,19 @@ namespace Leayal
                 return _MemoryStreamManager;
             }
         }
-        public static System.Threading.SynchronizationContext MainSynchronizationContext { get { return _mainsynchronizationcontext; } }
         private static ComputerInfo _compInfo = new ComputerInfo();
         public static ComputerInfo ComputerInfo
         { get { return _compInfo; } }
-        private static AssemblyInfo _entryassemblyInfo = new AssemblyInfo(CurrentAssembly);
-        public static AssemblyInfo AssemblyInfo
-        { get { return _entryassemblyInfo; } }
-
-        private static AssemblyInfo _currentAssemblyInfo = new AssemblyInfo(Assembly.GetExecutingAssembly());
-        public static AssemblyInfo CurrentAssemblyInfo
-        { get { return _currentAssemblyInfo; } }
+        private static AssemblyInfo _entryassemblyInfo;
+        public static AssemblyInfo EntryAssemblyInfo
+        {
+            get
+            {
+                if (_entryassemblyInfo == null)
+                    _entryassemblyInfo = new AssemblyInfo(EntryAssembly);
+                return _entryassemblyInfo;
+            }
+        }
 
         private static Process _currentprocess;
         public static Process CurrentProcess
@@ -51,14 +52,14 @@ namespace Leayal
                 return _appFilename;
             }
         }
-        private static Assembly _currentAssembly;
-        public static Assembly CurrentAssembly
+        private static Assembly _entryAssembly;
+        public static Assembly EntryAssembly
         {
             get
             {
-                if (_currentAssembly == null)
-                    _currentAssembly = Assembly.GetEntryAssembly();
-                return _currentAssembly;
+                if (_entryAssembly == null)
+                    _entryAssembly = Assembly.GetEntryAssembly();
+                return _entryAssembly;
             }
         }
     }

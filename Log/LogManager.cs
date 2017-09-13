@@ -32,7 +32,7 @@ namespace Leayal.Log
             public InnerLogManager()
             {
                 this.dict_Log = new ConcurrentDictionary<string, Logger>();
-                this.DefaultPath = AppInfo.AssemblyInfo.DirectoryPath;
+                this.DefaultPath = Directory.GetCurrentDirectory();
             }
 
             public Logger this[string fullname]

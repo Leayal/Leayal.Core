@@ -14,28 +14,28 @@ namespace Leayal
         {
             if (arg != null)
             {
-                string dun = arg.First();
-                if (dun != null)
-                {
-                    System.Text.StringBuilder builder = new System.Text.StringBuilder();
-                    if (!string.IsNullOrWhiteSpace(dun))
+                System.Text.StringBuilder builder = new System.Text.StringBuilder();
+                bool isFirst = true;
+                foreach (string tmp in arg)
+                    if (!string.IsNullOrWhiteSpace(tmp))
                     {
-                        if (dun.IndexOf(" ") > -1)
-                            builder.AppendFormat("\"{0}\"", dun);
-                        else
-                            builder.Append(dun);
-                    }
-                    foreach (string tmp in arg.Skip(1))
-                        if (!string.IsNullOrWhiteSpace(tmp))
+                        if (isFirst)
                         {
-                            if (tmp.IndexOf(" ") > -1)
+                            isFirst = false;
+                            if (tmp.IndexOf(' ') > -1 || tmp.IndexOf('&') > -1 || tmp.IndexOf('^') > -1 || tmp.IndexOf('\t') > -1)
+                                builder.AppendFormat("\"{0}\"", tmp);
+                            else
+                                builder.Append(tmp);
+                        }
+                        else
+                        {
+                            if (tmp.IndexOf(' ') > -1 || tmp.IndexOf('&') > -1 || tmp.IndexOf('^') > -1 || tmp.IndexOf('\t') > -1)
                                 builder.AppendFormat(" \"{0}\"", tmp);
                             else
                                 builder.Append(" " + tmp);
                         }
-                    return builder.ToString();
-                }
-                else { return string.Empty; }
+                    }
+                return builder.ToString();
             }
             else { return string.Empty; }
         }
@@ -44,6 +44,20 @@ namespace Leayal
         {
             if ((arg != null) && (arg.Length > 0))
             {
+                if (arg.Length == 1)
+                {
+                    if (!string.IsNullOrEmpty(arg[0]))
+                    {
+                        if (arg[0].IndexOf(' ') > -1 || arg[0].IndexOf('&') > -1 || arg[0].IndexOf('^') > -1 || arg[0].IndexOf('\t') > -1)
+                            return $"\"{arg[0]}\"";
+                        else
+                            return arg[0];
+                    }
+                    else
+                    {
+                        return string.Empty;
+                    }
+                }
                 System.Text.StringBuilder builder = new System.Text.StringBuilder();
                 string tmp;
                 for (int i = 0; i < arg.Length; i++)
@@ -53,14 +67,14 @@ namespace Leayal
                     {
                         if (i == 0)
                         {
-                            if (tmp.IndexOf(" ") > -1)
+                            if (tmp.IndexOf(' ') > -1 || tmp.IndexOf('&') > -1 || tmp.IndexOf('^') > -1 || tmp.IndexOf('\t') > -1)
                                 builder.AppendFormat("\"{0}\"", tmp);
                             else
                                 builder.Append(tmp);
                         }
                         else
                         {
-                            if (tmp.IndexOf(" ") > -1)
+                            if (tmp.IndexOf(' ') > -1 || tmp.IndexOf('&') > -1 || tmp.IndexOf('^') > -1 || tmp.IndexOf('\t') > -1)
                                 builder.AppendFormat(" \"{0}\"", tmp);
                             else
                                 builder.Append(" " + tmp);

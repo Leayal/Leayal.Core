@@ -13,5 +13,15 @@ namespace Leayal
         {
             return num1 > num2 ? num2 : num1;
         }
+
+        public static double Max(double num1, double num2)
+        {
+            return num1 > num2 ? num1 : num2;
+        }
+
+        public static double Min(double num1, double num2)
+        {
+            return num1 > num2 ? num2 : num1;
+        }
     }
 }
