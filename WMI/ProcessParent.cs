@@ -6,28 +6,28 @@ namespace Leayal.WMI
 {
     public static class ProcessParent
     {
-        private static int cacheGetParentProcessID = -2;
-        public static int GetParentProcessID()
+        public static int GetParentProcessID(int processID)
         {
-            if (cacheGetParentProcessID == -2)
-                using (ManagementObjectSearcher search = new ManagementObjectSearcher("root\\CIMV2", string.Format("SELECT ParentProcessId FROM Win32_Process WHERE ProcessId = {0}", AppInfo.CurrentProcess.Id)))
-                using (var results = search.Get().GetEnumerator())
-                {
-                    if (results.MoveNext())
-                        cacheGetParentProcessID = Convert.ToInt32(results.Current["ParentProcessId"]);
-                    else
-                        cacheGetParentProcessID = -1;
-                }
-            return cacheGetParentProcessID;
+            int result = -1;
+            using (ManagementObjectSearcher search = new ManagementObjectSearcher("root\\CIMV2", string.Format("SELECT ParentProcessId FROM Win32_Process WHERE ProcessId = {0}", processID)))
+            using (var results = search.Get().GetEnumerator())
+                if (results.MoveNext())
+                    result = Convert.ToInt32(results.Current["ParentProcessId"]);
+            return result;
+        }
+
+        public static int GetParentProcessID(Process process)
+        {
+            return GetParentProcessID(process.Id);
         }
 
         /// <summary>
         /// Return the <see cref="System.Diagnostics.Process"/> which started current process. Or null if parent process is not found or already closed.
         /// </summary>
         /// <returns></returns>
-        public static Process GetParentProcess()
+        public static Process GetParentProcess(Process process)
         {
-            int id = GetParentProcessID();
+            int id = GetParentProcessID(process);
             if (id > -1)
             {
                 try { return Process.GetProcessById(id); }
@@ -39,6 +39,14 @@ namespace Leayal.WMI
             }
             else
                 return null;
+        }
+
+        private static int cacheCurrentProcessParentID = -2;
+        public static int GetCurrentProcessParentID()
+        {
+            if (cacheCurrentProcessParentID == -2)
+                cacheCurrentProcessParentID = GetParentProcessID(AppInfo.CurrentProcessID);
+            return cacheCurrentProcessParentID;
         }
     }
 }

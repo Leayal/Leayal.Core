@@ -919,45 +919,6 @@ namespace Leayal
         #endregion REVISION
         #endregion VERSION
 
-        #region 64 BIT OS DETECTION
-        private static IsWow64ProcessDelegate GetIsWow64ProcessDelegate()
-        {
-            IntPtr handle = LoadLibrary("kernel32");
-
-            if (handle != IntPtr.Zero)
-            {
-                IntPtr fnPtr = GetProcAddress(handle, "IsWow64Process");
-
-                if (fnPtr != IntPtr.Zero)
-                {
-                    return (IsWow64ProcessDelegate)Marshal.GetDelegateForFunctionPointer((IntPtr)fnPtr, typeof(IsWow64ProcessDelegate));
-                }
-            }
-
-            return null;
-        }
-
-        private static bool Is32BitProcessOn64BitProcessor()
-        {
-            IsWow64ProcessDelegate fnDelegate = GetIsWow64ProcessDelegate();
-
-            if (fnDelegate == null)
-            {
-                return false;
-            }
-
-            bool isWow64;
-            bool retVal = fnDelegate.Invoke(AppInfo.CurrentProcess.Handle, out isWow64);
-
-            if (retVal == false)
-            {
-                return false;
-            }
-
-            return isWow64;
-        }
-        #endregion 64 BIT OS DETECTION
-
         #region Windows 10 Detection
 
         private static bool IsWindows10()

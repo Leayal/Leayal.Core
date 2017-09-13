@@ -31,25 +31,32 @@ namespace Leayal
                 return _entryassemblyInfo;
             }
         }
-
-        private static Process _currentprocess;
-        public static Process CurrentProcess
+        private static string _processFullpath;
+        public static string ProcessFullpath
         {
             get
             {
-                if (_currentprocess == null)
-                    _currentprocess = Process.GetCurrentProcess();
-                return _currentprocess;
+                if (string.IsNullOrEmpty(_processFullpath))
+                    GetProcessInfo();
+                return _processFullpath;
             }
         }
-        private static string _appFilename;
-        public static string ApplicationFilename
+        private static int _currentprocessID = -1;
+        public static int CurrentProcessID
         {
             get
             {
-                if (string.IsNullOrEmpty(_appFilename))
-                    _appFilename = CurrentProcess.MainModule.FileName;
-                return _appFilename;
+                if (_currentprocessID == -1)
+                    GetProcessInfo();
+                return _currentprocessID;
+            }
+        }
+        private static void GetProcessInfo()
+        {
+            using (Process proc = Process.GetCurrentProcess())
+            {
+                _currentprocessID = proc.Id;
+                _processFullpath = proc.MainModule.FileName;
             }
         }
         private static Assembly _entryAssembly;
