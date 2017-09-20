@@ -129,6 +129,7 @@ namespace Leayal.Net
             bool cancel = false;
             using (BufferedStream bufferStream = new BufferedStream(_stream, 1024))
             using (FileStream fs = this.innerfi.Create())
+            using (ByteBuffer buffer = new ByteBuffer(1024))
             {
                 byte[] laiwhg;
                 if (this.IsCompressedStream(bufferStream, out laiwhg))
@@ -142,8 +143,12 @@ namespace Leayal.Net
                         fs.Write(laiwhg, 0, laiwhg.Length);
                         totalread = laiwhg.Length;
                     }
-                    byte[] arr = new byte[1024];
-                    int readbyte = bufferStream.Read(arr, 0, arr.Length);
+                    int readbyte = bufferStream.Read(buffer, 0, buffer.Length);
+
+                    CacheWriteProgressChangedEventArgs myEvent = null;
+                    if (progressCallback != null)
+                        myEvent = new CacheWriteProgressChangedEventArgs(totalread);
+
                     while (readbyte > 0)
                     {
                         if (cancel)
@@ -153,15 +158,15 @@ namespace Leayal.Net
                             this.innerfi.Delete();
                             return;
                         }
-                        fs.Write(arr, 0, readbyte);
+                        fs.Write(buffer, 0, readbyte);
                         totalread += readbyte;
                         if (progressCallback != null)
                         {
-                            var myEvent = new CacheWriteProgressChangedEventArgs(totalread);
+                            myEvent.SetBytesReceived(totalread);
                             progressCallback.Invoke(this, myEvent);
                             cancel = myEvent.Cancel;
                         }
-                        readbyte = bufferStream.Read(arr, 0, arr.Length);
+                        readbyte = bufferStream.Read(buffer, 0, buffer.Length);
                     }
                     fs.Flush();
                 }
@@ -178,8 +183,12 @@ namespace Leayal.Net
                             localfile.Write(laiwhg, 0, laiwhg.Length);
                             totalread = laiwhg.Length;
                         }
-                        byte[] arr = new byte[1024];
-                        int readbyte = bufferStream.Read(arr, 0, arr.Length);
+                        int readbyte = bufferStream.Read(buffer, 0, buffer.Length);
+
+                        CacheWriteProgressChangedEventArgs myEvent = null;
+                        if (progressCallback != null)
+                            myEvent = new CacheWriteProgressChangedEventArgs(totalread);
+
                         while (readbyte > 0)
                         {
                             if (cancel)
@@ -189,15 +198,15 @@ namespace Leayal.Net
                                 this.innerfi.Delete();
                                 return;
                             }
-                            localfile.Write(arr, 0, readbyte);
+                            localfile.Write(buffer, 0, readbyte);
                             totalread += readbyte;
                             if (progressCallback != null)
                             {
-                                var myEvent = new CacheWriteProgressChangedEventArgs(totalread);
+                                myEvent.SetBytesReceived(totalread);
                                 progressCallback.Invoke(this, myEvent);
                                 cancel = myEvent.Cancel;
                             }
-                            readbyte = bufferStream.Read(arr, 0, arr.Length);
+                            readbyte = bufferStream.Read(buffer, 0, buffer.Length);
                         }
                         localfile.Flush();
                     }

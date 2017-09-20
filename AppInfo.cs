@@ -3,6 +3,7 @@ using Microsoft.VisualBasic.Devices;
 using Microsoft.VisualBasic.ApplicationServices;
 using System.Reflection;
 using Microsoft.IO;
+using System.Security.Principal;
 
 namespace Leayal
 {
@@ -68,6 +69,15 @@ namespace Leayal
                     _entryAssembly = Assembly.GetEntryAssembly();
                 return _entryAssembly;
             }
+        }
+
+        private static bool? cacheIsAsAdministrator = null;
+        public static bool IsAsAdministrator()
+        {
+            if (!cacheIsAsAdministrator.HasValue)
+                using (WindowsIdentity principal = WindowsIdentity.GetCurrent())
+                    cacheIsAsAdministrator = new WindowsPrincipal(principal).IsInRole(WindowsBuiltInRole.Administrator);
+            return cacheIsAsAdministrator.Value;
         }
     }
 }

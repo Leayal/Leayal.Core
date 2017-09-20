@@ -487,11 +487,16 @@ namespace Leayal.Net
                                             s.ReadTimeout = this.ReadTimeOut;
                                     }
                                     if (this._response.ContentLength > 0)
+                                    {
+                                        DownloadProgressChangedStruct progressChangedStruct = new DownloadProgressChangedStruct(null, 0, this._response.ContentLength);
                                         _cacheinfo.CreateFromStream(s, remoteLastModified, (sender, e) =>
                                         {
                                             e.Cancel = this.worker.CancellationPending;
-                                            this.OnDownloadProgressChanged(this.GetDownloadProgressChangedEventArgs(null, e.BytesReceived, this._response.ContentLength));
+                                            progressChangedStruct.SetBytesReceived(e.BytesReceived);
+                                            this.worker.ReportProgress(1, progressChangedStruct);
+                                            // this.OnDownloadProgressChanged(this.GetDownloadProgressChangedEventArgs(null, e.BytesReceived, this._response.ContentLength));
                                         });
+                                    }
                                     else
                                         _cacheinfo.CreateFromStream(s, remoteLastModified);
                                 }
@@ -557,10 +562,16 @@ namespace Leayal.Net
                                 using (Stream s = this._response.GetResponseStream())
                                 {
                                     if (this._response.ContentLength > 0)
-                                        _cacheinfo.CreateFromStream(s, remoteLastModified, (sender, e) => {
+                                    {
+                                        DownloadProgressChangedStruct progressChangedStruct = new DownloadProgressChangedStruct(null, 0, this._response.ContentLength);
+                                        _cacheinfo.CreateFromStream(s, remoteLastModified, (sender, e) =>
+                                        {
                                             e.Cancel = this.worker.CancellationPending;
-                                            this.OnDownloadProgressChanged(this.GetDownloadProgressChangedEventArgs(null, e.BytesReceived, this._response.ContentLength));
+                                            progressChangedStruct.SetBytesReceived(e.BytesReceived);
+                                            this.worker.ReportProgress(1, progressChangedStruct);
+                                            // this.OnDownloadProgressChanged(this.GetDownloadProgressChangedEventArgs(null, e.BytesReceived, this._response.ContentLength));
                                         });
+                                    }
                                     else
                                         _cacheinfo.CreateFromStream(s, remoteLastModified);
                                 }
@@ -617,15 +628,27 @@ namespace Leayal.Net
                     }
                 }
                 using (FileStream localfile = File.Create(filename))
+                using (ByteBuffer buffer = new ByteBuffer(1024))
                 {
-                    byte[] arr = new byte[1024];
-                    int readbyte = networkStream.Read(arr, 0, arr.Length);
+                    long totalread = 0;
+                    int readbyte = networkStream.Read(buffer, 0, buffer.Length);
+
+                    DownloadProgressChangedStruct progressChangedStruct = null;
+                    if (myRespfile.ContentLength > 0)
+                        progressChangedStruct = new DownloadProgressChangedStruct(null, totalread, myRespfile.ContentLength);
+
                     while (readbyte > 0)
                     {
                         if (this.cancelling)
                             break;
-                        localfile.Write(arr, 0, readbyte);
-                        readbyte = networkStream.Read(arr, 0, arr.Length);
+                        localfile.Write(buffer, 0, readbyte);
+                        totalread += readbyte;
+                        if (myRespfile.ContentLength > 0)
+                        {
+                            progressChangedStruct.SetBytesReceived(totalread);
+                            this.worker.ReportProgress(1, progressChangedStruct);
+                        }
+                        readbyte = networkStream.Read(buffer, 0, buffer.Length);
                     }
                     localfile.Flush();
                 }
@@ -670,20 +693,42 @@ namespace Leayal.Net
                     }
                 }
                 IO.RecyclableMemoryStream localfile = new IO.RecyclableMemoryStream(tag);
+                try
                 {
-                    byte[] arr = new byte[1024];
-                    int readbyte = networkStream.Read(arr, 0, arr.Length);
-                    while (readbyte > 0)
+                    using (ByteBuffer buffer = new ByteBuffer(1024))
                     {
-                        if (this.cancelling)
-                            break;
-                        localfile.Write(arr, 0, readbyte);
-                        readbyte = networkStream.Read(arr, 0, arr.Length);
+                        long totalread = 0;
+                        int readbyte = networkStream.Read(buffer, 0, buffer.Length);
+
+                        DownloadProgressChangedStruct progressChangedStruct = null;
+                        if (myRespfile.ContentLength > 0)
+                            progressChangedStruct = new DownloadProgressChangedStruct(null, totalread, myRespfile.ContentLength);
+
+                        while (readbyte > 0)
+                        {
+                            if (this.cancelling)
+                                break;
+                            localfile.Write(buffer, 0, readbyte);
+
+                            totalread += readbyte;
+                            if (myRespfile.ContentLength > 0)
+                            {
+                                progressChangedStruct.SetBytesReceived(totalread);
+                                this.worker.ReportProgress(1, progressChangedStruct);
+                            }
+
+                            readbyte = networkStream.Read(buffer, 0, buffer.Length);
+                        }
+                        localfile.Flush();
+                        localfile.Position = 0;
                     }
-                    localfile.Flush();
-                    localfile.Position = 0;
+                    result = localfile;
                 }
-                result = localfile;
+                catch (Exception ex)
+                {
+                    localfile.Dispose();
+                    throw ex;
+                }
             }
             return result;
         }
@@ -731,19 +776,27 @@ namespace Leayal.Net
                     }
                 }
                 using (Microsoft.IO.RecyclableMemoryStream localfile = new Microsoft.IO.RecyclableMemoryStream(AppInfo.MemoryStreamManager))
+                using (ByteBuffer buffer = new ByteBuffer(1024))
                 {
                     long totalread = 0;
-                    byte[] arr = new byte[1024];
-                    int readbyte = networkStream.Read(arr, 0, arr.Length);
+                    int readbyte = networkStream.Read(buffer, 0, buffer.Length);
+
+                    DownloadProgressChangedStruct progressChangedStruct = null;
+                    if (myRespstr.ContentLength > 0)
+                        progressChangedStruct = new DownloadProgressChangedStruct(null, totalread, myRespstr.ContentLength);
+
                     while (readbyte > 0)
                     {
                         if (this.cancelling)
                             break;
-                        localfile.Write(arr, 0, readbyte);
+                        localfile.Write(buffer, 0, readbyte);
                         totalread += readbyte;
                         if (myRespstr.ContentLength > 0)
-                            this.worker.ReportProgress(1, new DownloadProgressChangedStruct(null, totalread, myRespstr.ContentLength));
-                        readbyte = networkStream.Read(arr, 0, arr.Length);
+                        {
+                            progressChangedStruct.SetBytesReceived(totalread);
+                            this.worker.ReportProgress(1, progressChangedStruct);
+                        }
+                        readbyte = networkStream.Read(buffer, 0, buffer.Length);
                     }
                     localfile.Flush();
                     localfile.Position = 0;
@@ -797,17 +850,27 @@ namespace Leayal.Net
                     }
                 }
                 using (Microsoft.IO.RecyclableMemoryStream localfile = new Microsoft.IO.RecyclableMemoryStream(AppInfo.MemoryStreamManager))
+                using (ByteBuffer buffer = new ByteBuffer(1024))
                 {
                     long totalread = 0;
-                    byte[] arr = new byte[1024];
-                    int readbyte = networkStream.Read(arr, 0, arr.Length);
+                    int readbyte = networkStream.Read(buffer, 0, buffer.Length);
+
+                    DownloadProgressChangedStruct progressChangedStruct = null;
+                    if (myRespdata.ContentLength > 0)
+                        progressChangedStruct = new DownloadProgressChangedStruct(null, totalread, myRespdata.ContentLength);
+
                     while (readbyte > 0)
                     {
                         if (this.cancelling)
                             break;
-                        localfile.Write(arr, 0, readbyte);
+                        localfile.Write(buffer, 0, readbyte);
                         totalread += readbyte;
-                        readbyte = networkStream.Read(arr, 0, arr.Length);
+                        if (myRespdata.ContentLength > 0)
+                        {
+                            progressChangedStruct.SetBytesReceived(totalread);
+                            this.worker.ReportProgress(1, progressChangedStruct);
+                        }
+                        readbyte = networkStream.Read(buffer, 0, buffer.Length);
                     }
                     localfile.Flush();
                     /*byte[] bytes = localfile.GetBuffer();
@@ -828,7 +891,7 @@ namespace Leayal.Net
         public new void DownloadDataAsync(System.Uri address, object UserToken)
         {
             if (this.IsBusy)
-                throw new InvalidOperationException("");
+                throw new InvalidOperationException();
             this.CurrentTask = Task.DownloadData;
             this.innerusertoken = UserToken;
             this.worker.RunWorkerAsync(new requestmeta(address));
@@ -860,10 +923,15 @@ namespace Leayal.Net
                             }
                         }
                         using (FileStream localfile = File.Create(_filerequestmeta.Filename))
+                        using (ByteBuffer buffer = new ByteBuffer(1024))
                         {
                             long totalread = 0;
-                            byte[] arr = new byte[1024];
-                            int readbyte = networkStream.Read(arr, 0, arr.Length);
+                            int readbyte = networkStream.Read(buffer, 0, buffer.Length);
+
+                            DownloadProgressChangedStruct progressChangedStruct = null;
+                            if (myRespfile.ContentLength > 0)
+                                progressChangedStruct = new DownloadProgressChangedStruct(null, totalread, myRespfile.ContentLength);
+
                             while (readbyte > 0)
                             {
                                 if (this.worker.CancellationPending)
@@ -871,11 +939,14 @@ namespace Leayal.Net
                                     e.Cancel = true;
                                     break;
                                 }
-                                localfile.Write(arr, 0, readbyte);
+                                localfile.Write(buffer, 0, readbyte);
                                 totalread += readbyte;
                                 if (myRespfile.ContentLength > 0)
-                                    this.worker.ReportProgress(1, new DownloadProgressChangedStruct(null, totalread, myRespfile.ContentLength));
-                                readbyte = networkStream.Read(arr, 0, arr.Length);
+                                {
+                                    progressChangedStruct.SetBytesReceived(totalread);
+                                    this.worker.ReportProgress(1, progressChangedStruct);
+                                }
+                                readbyte = networkStream.Read(buffer, 0, buffer.Length);
                             }
                             localfile.Flush();
                         }
@@ -903,10 +974,15 @@ namespace Leayal.Net
                             }
                         }
                         using (Microsoft.IO.RecyclableMemoryStream localfile = new Microsoft.IO.RecyclableMemoryStream(AppInfo.MemoryStreamManager))
+                        using (ByteBuffer buffer = new ByteBuffer(1024))
                         {
                             long totalread = 0;
-                            byte[] arr = new byte[1024];
-                            int readbyte = networkStream.Read(arr, 0, arr.Length);
+                            int readbyte = networkStream.Read(buffer, 0, buffer.Length);
+
+                            DownloadProgressChangedStruct progressChangedStruct = null;
+                            if (myRespdata.ContentLength > 0)
+                                progressChangedStruct = new DownloadProgressChangedStruct(null, totalread, myRespdata.ContentLength);
+
                             while (readbyte > 0)
                             {
                                 if (this.worker.CancellationPending)
@@ -914,11 +990,14 @@ namespace Leayal.Net
                                     e.Cancel = true;
                                     break;
                                 }
-                                localfile.Write(arr, 0, readbyte);
+                                localfile.Write(buffer, 0, readbyte);
                                 totalread += readbyte;
                                 if (myRespdata.ContentLength > 0)
-                                    this.worker.ReportProgress(1, new DownloadProgressChangedStruct(null, totalread, myRespdata.ContentLength));
-                                readbyte = networkStream.Read(arr, 0, arr.Length);
+                                {
+                                    progressChangedStruct.SetBytesReceived(totalread);
+                                    this.worker.ReportProgress(1, progressChangedStruct);
+                                }
+                                readbyte = networkStream.Read(buffer, 0, buffer.Length);
                             }
                             localfile.Flush();
                             dataresult = localfile.ToArray();
@@ -949,10 +1028,15 @@ namespace Leayal.Net
                         }
 
                         using (Microsoft.IO.RecyclableMemoryStream localfile = new Microsoft.IO.RecyclableMemoryStream(AppInfo.MemoryStreamManager))
+                        using (ByteBuffer buffer = new ByteBuffer(1024))
                         {
                             long totalread = 0;
-                            byte[] arr = new byte[1024];
-                            int readbyte = networkStream.Read(arr, 0, arr.Length);
+                            int readbyte = networkStream.Read(buffer, 0, buffer.Length);
+
+                            DownloadProgressChangedStruct progressChangedStruct = null;
+                            if (myRespstr.ContentLength > 0)
+                                progressChangedStruct = new DownloadProgressChangedStruct(null, totalread, myRespstr.ContentLength);
+
                             while (readbyte > 0)
                             {
                                 if (this.worker.CancellationPending)
@@ -960,11 +1044,14 @@ namespace Leayal.Net
                                     e.Cancel = true;
                                     break;
                                 }
-                                localfile.Write(arr, 0, readbyte);
+                                localfile.Write(buffer, 0, readbyte);
                                 totalread += readbyte;
                                 if (myRespstr.ContentLength > 0)
-                                    this.worker.ReportProgress(1, new DownloadProgressChangedStruct(null, totalread, myRespstr.ContentLength));
-                                readbyte = networkStream.Read(arr, 0, arr.Length);
+                                {
+                                    progressChangedStruct.SetBytesReceived(totalread);
+                                    this.worker.ReportProgress(1, progressChangedStruct);
+                                }
+                                readbyte = networkStream.Read(buffer, 0, buffer.Length);
                             }
                             localfile.Flush();
                             localfile.Position = 0;
@@ -997,31 +1084,42 @@ namespace Leayal.Net
                         }
 
                         IO.RecyclableMemoryStream localfile = new IO.RecyclableMemoryStream(_requestmetamemory.Filename);
-                        long totalread = 0;
-                        byte[] arr = new byte[1024];
-                        int readbyte = networkStream.Read(arr, 0, arr.Length);
-                        while (readbyte > 0)
+                        using (ByteBuffer buffer = new ByteBuffer(1024))
                         {
-                            if (this.worker.CancellationPending)
-                            {
-                                e.Cancel = true;
-                                break;
-                            }
-                            localfile.Write(arr, 0, readbyte);
-                            totalread += readbyte;
+                            long totalread = 0;
+                            int readbyte = networkStream.Read(buffer, 0, buffer.Length);
+
+                            DownloadProgressChangedStruct progressChangedStruct = null;
                             if (myRespmem.ContentLength > 0)
-                                this.worker.ReportProgress(1, new DownloadProgressChangedStruct(null, totalread, myRespmem.ContentLength));
-                            readbyte = networkStream.Read(arr, 0, arr.Length);
+                                progressChangedStruct = new DownloadProgressChangedStruct(null, totalread, myRespmem.ContentLength);
+
+                            while (readbyte > 0)
+                            {
+                                if (this.worker.CancellationPending)
+                                {
+                                    e.Cancel = true;
+                                    break;
+                                }
+                                localfile.Write(buffer, 0, readbyte);
+                                totalread += readbyte;
+                                if (myRespmem.ContentLength > 0)
+                                {
+                                    progressChangedStruct.SetBytesReceived(totalread);
+                                    this.worker.ReportProgress(1, progressChangedStruct);
+                                }
+                                readbyte = networkStream.Read(buffer, 0, buffer.Length);
+                            }
+                            localfile.Flush();
+                            localfile.Position = 0;
+                            memresult = localfile;
                         }
-                        localfile.Flush();
-                        localfile.Position = 0;
-                        memresult = localfile;
                     }
                     e.Result = memresult;
                     break;
             }
         }
 
+        private DownloadProgressChangedEventArgs cacheDownloadProgressChangedEventArgs;
         private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             switch (e.ProgressPercentage)
@@ -1029,7 +1127,22 @@ namespace Leayal.Net
                 case 1:
                     DownloadProgressChangedStruct progressmeta = e.UserState as DownloadProgressChangedStruct;
                     if (progressmeta != null)
-                        this.OnDownloadProgressChanged(this.GetDownloadProgressChangedEventArgs(progressmeta.UserToken, progressmeta.BytesReceived, progressmeta.TotalBytesToReceive));
+                    {
+                        if (this.cacheDownloadProgressChangedEventArgs == null)
+                            this.cacheDownloadProgressChangedEventArgs = EventArgsHelper.GetDownloadProgressChangedEventArgs(progressmeta.UserToken, progressmeta.BytesReceived, progressmeta.TotalBytesToReceive);
+
+                        if (this.cacheDownloadProgressChangedEventArgs.TotalBytesToReceive != progressmeta.TotalBytesToReceive)
+                            this.cacheDownloadProgressChangedEventArgs.SetTotalBytesToReceive(progressmeta.TotalBytesToReceive);
+
+                        if (this.cacheDownloadProgressChangedEventArgs.BytesReceived != progressmeta.BytesReceived)
+                        {
+                            this.cacheDownloadProgressChangedEventArgs.SetBytesReceived(progressmeta.BytesReceived);
+                            this.cacheDownloadProgressChangedEventArgs.CalculateProgressPercentage();
+                        }
+
+                        this.OnDownloadProgressChanged(this.cacheDownloadProgressChangedEventArgs);
+                        //this.OnDownloadProgressChanged(EventArgsHelper.GetDownloadProgressChangedEventArgs(progressmeta.UserToken, progressmeta.BytesReceived, progressmeta.TotalBytesToReceive));
+                    }
                     break;
             }
         }
@@ -1049,15 +1162,15 @@ namespace Leayal.Net
                     break;
                 case Task.DownloadString:
                     if (e.Error != null || e.Cancelled)
-                        this.OnDownloadStringCompleted(GetDownloadStringCompletedEventArgs(null, e.Error, e.Cancelled, innerusertoken));
+                        this.OnDownloadStringCompleted(EventArgsHelper.GetDownloadStringCompletedEventArgs(null, e.Error, e.Cancelled, innerusertoken));
                     else
-                        this.OnDownloadStringCompleted(GetDownloadStringCompletedEventArgs(e.Result as string, e.Error, e.Cancelled, innerusertoken));
+                        this.OnDownloadStringCompleted(EventArgsHelper.GetDownloadStringCompletedEventArgs(e.Result as string, e.Error, e.Cancelled, innerusertoken));
                     break;
                 case Task.DownloadData:
                     if (e.Error != null || e.Cancelled)
-                        this.OnDownloadDataCompleted(GetDownloadDataCompletedEventArgs(null, e.Error, e.Cancelled, innerusertoken));
+                        this.OnDownloadDataCompleted(EventArgsHelper.GetDownloadDataCompletedEventArgs(null, e.Error, e.Cancelled, innerusertoken));
                     else
-                        this.OnDownloadDataCompleted(GetDownloadDataCompletedEventArgs(e.Result as byte[], e.Error, e.Cancelled, innerusertoken));
+                        this.OnDownloadDataCompleted(EventArgsHelper.GetDownloadDataCompletedEventArgs(e.Result as byte[], e.Error, e.Cancelled, innerusertoken));
                     break;
                 case Task.DownloadToMemory:
                     if (e.Error != null || e.Cancelled)
@@ -1147,44 +1260,23 @@ namespace Leayal.Net
             //if (this.DownloadToMemoryCompleted!= null)
             this.DownloadToMemoryCompleted?.Invoke(this, e);
         }
-
-        protected DownloadDataCompletedEventArgs GetDownloadDataCompletedEventArgs(byte[] bytes, System.Exception ex, bool cancelled, object usertoken)
-        {
-            return (DownloadDataCompletedEventArgs)Activator.CreateInstance(typeof(DownloadDataCompletedEventArgs),
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                null, new object[] { bytes, ex, cancelled, usertoken }, null);
-        }
-
-        protected DownloadStringCompletedEventArgs GetDownloadStringCompletedEventArgs(string str, System.Exception ex, bool cancelled, object usertoken)
-        {
-            return (DownloadStringCompletedEventArgs)Activator.CreateInstance(typeof(DownloadStringCompletedEventArgs),
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                null, new object[] { str, ex, cancelled, usertoken }, null);
-        }
-
+        
         private class DownloadProgressChangedStruct
         {
-            public long BytesReceived { get; }
+            private long _bytesReceived;
+            internal void SetBytesReceived(long val)
+            {
+                this._bytesReceived = val;
+            }
+            public long BytesReceived => this._bytesReceived;
             public long TotalBytesToReceive { get; }
             public object UserToken { get; }
-            public DownloadProgressChangedStruct(object _userToken, long _bytesReceived, long _totalBytesToReceive)
+            public DownloadProgressChangedStruct(object _userToken, long bytesReceived, long _totalBytesToReceive)
             {
                 this.UserToken = _userToken;
                 this.TotalBytesToReceive = _totalBytesToReceive;
-                this.BytesReceived = _bytesReceived;
+                this._bytesReceived = bytesReceived;
             }
-        }
-
-        protected DownloadProgressChangedEventArgs GetDownloadProgressChangedEventArgs(object userToken, long bytesReceived, long totalBytesToReceive)
-        {
-            return this.GetDownloadProgressChangedEventArgs((int)((100F * bytesReceived) / totalBytesToReceive), userToken, bytesReceived, totalBytesToReceive);
-        }
-
-        protected DownloadProgressChangedEventArgs GetDownloadProgressChangedEventArgs(int progressPercentage, object userToken, long bytesReceived, long totalBytesToReceive)
-        {
-            return (DownloadProgressChangedEventArgs)Activator.CreateInstance(typeof(DownloadProgressChangedEventArgs),
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                null, new object[] { progressPercentage, userToken, bytesReceived, totalBytesToReceive }, null);
         }
 
         protected override void Dispose(bool disposing)
