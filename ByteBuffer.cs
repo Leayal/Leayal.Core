@@ -17,6 +17,8 @@ namespace Leayal
         public ByteBuffer(int capacity)
         {
             this.memStream = new RecyclableMemoryStream(string.Empty, capacity);
+            if (this.memStream.Capacity != capacity)
+                this.memStream.Capacity = capacity;
         }
 
         public int Length => this.GetBuffer().Length;

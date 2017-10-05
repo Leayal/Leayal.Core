@@ -32,40 +32,41 @@ namespace Leayal.Net
                 null, new object[] { str, ex, cancelled, usertoken }, null);
         }
 
+        private static System.Reflection.FieldInfo prop_BytesReceived, prop_TotalBytesToReceive, prop_ProgressPercentage;
         internal static void SetBytesReceived(this DownloadProgressChangedEventArgs eventArgs, long value)
         {
-            var prop = eventArgs.GetType().GetField("m_BytesReceived", System.Reflection.BindingFlags.NonPublic
-                | System.Reflection.BindingFlags.Instance);
-            if (prop != null)
-                prop.SetValue(eventArgs, value);
+            if (prop_BytesReceived == null)
+                prop_BytesReceived = eventArgs.GetType().GetField("m_BytesReceived", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (prop_BytesReceived != null)
+                prop_BytesReceived.SetValue(eventArgs, value);
         }
 
         internal static void SetTotalBytesToReceive(this DownloadProgressChangedEventArgs eventArgs, long value)
         {
-            var prop = eventArgs.GetType().GetField("m_TotalBytesToReceive", System.Reflection.BindingFlags.NonPublic
-                | System.Reflection.BindingFlags.Instance);
-            if (prop != null)
-                prop.SetValue(eventArgs, value);
+            if (prop_TotalBytesToReceive == null)
+                prop_TotalBytesToReceive = eventArgs.GetType().GetField("m_TotalBytesToReceive", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (prop_TotalBytesToReceive != null)
+                prop_TotalBytesToReceive.SetValue(eventArgs, value);
         }
 
         internal static void SetProgressPercentage(this ProgressChangedEventArgs eventArgs, int value)
         {
             if (value < 0 || value > 100)
                 throw new InvalidOperationException();
-            var prop = eventArgs.GetType().GetField("progressPercentage", System.Reflection.BindingFlags.NonPublic
-                | System.Reflection.BindingFlags.Instance);
-            if (prop != null)
-                prop.SetValue(eventArgs, value);
+            if (prop_ProgressPercentage == null)
+                prop_ProgressPercentage = eventArgs.GetType().GetField("progressPercentage", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (prop_ProgressPercentage != null)
+                prop_ProgressPercentage.SetValue(eventArgs, value);
             //progressPercentage
         }
 
         internal static void CalculateProgressPercentage(this DownloadProgressChangedEventArgs eventArgs)
         {
-            var prop = eventArgs.GetType().GetField("progressPercentage", System.Reflection.BindingFlags.NonPublic
-                | System.Reflection.BindingFlags.Instance);
-            if (prop != null)
+            if (prop_ProgressPercentage == null)
+                prop_ProgressPercentage = eventArgs.GetType().GetField("progressPercentage", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (prop_ProgressPercentage != null)
                 if (eventArgs.TotalBytesToReceive > 0)
-                    prop.SetValue(eventArgs, System.Convert.ToInt32((eventArgs.BytesReceived * 100d) / eventArgs.TotalBytesToReceive));
+                    prop_ProgressPercentage.SetValue(eventArgs, System.Convert.ToInt32((eventArgs.BytesReceived * 100d) / eventArgs.TotalBytesToReceive));
             //progressPercentage
         }
     }

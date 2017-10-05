@@ -137,6 +137,13 @@ namespace Leayal.IO
             return this.innerMemStream.ToString();
         }
 
+        public override int Capacity { get => this.innerMemStream.Capacity; set => this.innerMemStream.Capacity = value; }
+
+        public override void WriteTo(Stream stream)
+        {
+            this.innerMemStream.WriteTo(stream);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

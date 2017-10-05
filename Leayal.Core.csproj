@@ -49,11 +49,14 @@
     <Compile Include="ArrayHelper.cs" />
     <Compile Include="ByteBuffer.cs" />
     <Compile Include="ByteHelper.cs" />
+    <Compile Include="Collections\FixedArray.cs" />
     <Compile Include="Ini\DuplicatedKeyCollection.cs" />
     <Compile Include="Ini\DuplicatedKeyInfo.cs" />
     <Compile Include="Ini\IniReadErrorEventArgs.cs" />
+    <Compile Include="IO\BinaryScanner.cs" />
     <Compile Include="IO\CacheStream.cs" />
     <Compile Include="IO\PathHelper.cs" />
+    <Compile Include="IO\ProgressPercentageEventArgs.cs" />
     <Compile Include="IO\RecyclableMemoryStream.cs" />
     <Compile Include="Log\Enums.cs" />
     <Compile Include="MoreMath.cs" />
