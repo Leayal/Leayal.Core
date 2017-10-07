@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Leayal.Collections;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 namespace Leayal.IO
 {
@@ -75,29 +77,76 @@ namespace Leayal.IO
             this.eventarg = new ProgressPercentageEventArgs(0);
         }
 
-        public IEnumerable<BinaryScanResult> Scan(string hex)
+        public IEnumerable<BinaryScanResult> Scan(params string[] hex)
         {
             if (this.IsScanning)
                 throw new InvalidOperationException();
-            return this.Scan(ByteHelper.FromHexString(hex));
+            List<byte[]> derp = new List<byte[]>(hex.Length);
+            for (int i = 0; i < hex.Length; i++)
+                derp.Add(ByteHelper.FromHexString(hex[i]));
+            return this.Scan(derp);
         }
 
-        public IEnumerable<BinaryScanResult> Scan(params byte[] bytes)
+        public IEnumerable<BinaryScanResult> Scan(IEnumerable<string> hex)
+        {
+            if (this.IsScanning)
+                throw new InvalidOperationException();
+            List<byte[]> derp = new List<byte[]>();
+            foreach (string hexString in hex)
+                derp.Add(ByteHelper.FromHexString(hexString));
+            return this.Scan(derp);
+        }
+
+        public IEnumerable<BinaryScanResult> Scan(params byte[][] bytes)
         {
             if (this.IsScanning)
                 throw new InvalidOperationException();
 
             if (this.BaseStream == this.WriteStream)
-                return new BinaryScanResultsWalker(new BinaryScanResults_SameStream(this, bytes));
+                return new IEnumeratorWalker<BinaryScanResult>(new BinaryScanResults_SameStream(this, bytes));
             else
-                return new BinaryScanResultsWalker(new BinaryScanResults_DifferentStreams(this, bytes));
+                return new IEnumeratorWalker<BinaryScanResult>(new BinaryScanResults_DifferentStreams(this, bytes));
         }
 
-        public IEnumerable<BinaryScanResult> Scan(string str, Encoding encoding)
+        public IEnumerable<BinaryScanResult> Scan(IEnumerable<byte[]> bytes)
         {
             if (this.IsScanning)
                 throw new InvalidOperationException();
-            return this.Scan(encoding.GetBytes(str));
+
+            if (this.BaseStream == this.WriteStream)
+                return new IEnumeratorWalker<BinaryScanResult>(new BinaryScanResults_SameStream(this, bytes));
+            else
+                return new IEnumeratorWalker<BinaryScanResult>(new BinaryScanResults_DifferentStreams(this, bytes));
+        }
+
+        public IEnumerable<BinaryScanResult> Scan(Encoding encoding, params string[] str)
+        {
+            if (this.IsScanning)
+                throw new InvalidOperationException();
+            List<byte[]> derp = new List<byte[]>(str.Length);
+            for (int i = 0; i < str.Length; i++)
+                derp.Add(encoding.GetBytes(str[i]));
+            return this.Scan(derp);
+        }
+
+        public IEnumerable<BinaryScanResult> Scan(Encoding encoding, IEnumerable<string> str)
+        {
+            if (this.IsScanning)
+                throw new InvalidOperationException();
+            List<byte[]> derp = new List<byte[]>();
+            foreach (string item in str)
+                derp.Add(encoding.GetBytes(item));
+            return this.Scan(derp);
+        }
+
+        public IEnumerable<BinaryScanResult> Scan(IDictionary<Encoding, string> strs)
+        {
+            if (this.IsScanning)
+                throw new InvalidOperationException();
+            List<byte[]> derp = new List<byte[]>();
+            foreach (var item in strs)
+                derp.Add(item.Key.GetBytes(item.Value));
+            return this.Scan(derp);
         }
 
         private bool _disposed;
@@ -196,44 +245,34 @@ namespace Leayal.IO
         }
     }
 
-    class BinaryScanResultsWalker : IEnumerable<BinaryScanResult>
-    {
-        private IEnumerator<BinaryScanResult> source;
-        public BinaryScanResultsWalker(IEnumerator<BinaryScanResult> ienumerator)
-        {
-            this.source = ienumerator;
-        }
-        public IEnumerator<BinaryScanResult> GetEnumerator() => this.source;
-
-        IEnumerator IEnumerable.GetEnumerator() => this.source;
-    }
-
     /// <summary>
     /// Shhhh....This class didn't get exposed by standard anyway, so don't blame my naming sense. This class has some problem with performance as it has to write the byte out to the WritingStream.
     /// </summary>
     class BinaryScanResults_DifferentStreams : BinaryScanResults_SameStream
     {
-        internal BinaryScanResults_DifferentStreams(BinaryScanner scanner, byte[] bytes) : base(scanner, bytes) { }
+        internal BinaryScanResults_DifferentStreams(BinaryScanner scanner, IEnumerable<byte[]> bytes) : base(scanner, bytes) { }
 
         protected override bool ScannerRead()
         {
             int reading = this.scanner.BaseStream.ReadByte();
             byte readingByte;
+            MatchResult matchResult;
             while (reading > -1)
             {
                 readingByte = (byte)reading;
-                this.scanner.WriteStream.WriteByte(readingByte);
                 this.buffer.Push(readingByte);
+                this.scanner.WriteStream.WriteByte(readingByte);
                 if (!this.scanner.IsProgressPercentageEventNull())
                     this.scanner.RaiseProgressPercentageEvent((byte)Convert.ToInt32((this.scanner.BaseStream.Position * 100d) / this.scanner.BaseStream.Length));
-                if (this.buffer.Count == this.bytesToScan.Length)
-                    if (this.IsMatch(this.buffer.GetArray()))
+                if (this.buffer.Count == this.longestLength)
+                {
+                    matchResult = this.IsMatch(this.buffer.GetArray());
+                    if (matchResult.Index != -1)
                     {
-                        byte[] result = new byte[this.bytesToScan.Length];
-                        this.buffer.CopyTo(result);
-                        this._current = new BinaryScanResult(this.scanner.WriteStream, this.scanner.WriteStream.Position - this.bytesToScan.Length, result);
+                        this._current = new BinaryScanResult(this.scanner.BaseStream, this.scanner.BaseStream.Position - this.longestLength + matchResult.Index, matchResult.Matched);
                         return true;
                     }
+                }
                 reading = this.scanner.BaseStream.ReadByte();
             }
             return false;
@@ -247,15 +286,17 @@ namespace Leayal.IO
     {
         protected long first_position;
         protected BinaryScanner scanner;
-        protected byte[] bytesToScan;
-        protected Collections.FixedArray<byte> buffer;
+        protected byte[][] bytesToScan;
+        protected FixedArray<byte> buffer;
+        protected int longestLength;
         
-        internal BinaryScanResults_SameStream(BinaryScanner scanner, byte[] bytes)
+        internal BinaryScanResults_SameStream(BinaryScanner scanner, IEnumerable<byte[]> bytes)
         {
-            this.bytesToScan = bytes;
+            this.bytesToScan = bytes.OrderByDescending(byteArray => byteArray.Length).ToArray();
             this.first_position = scanner.BaseStream.Position;
             this.scanner = scanner;
-            this.buffer = new Collections.FixedArray<byte>(bytes.Length);
+            this.longestLength = this.bytesToScan[0].Length;
+            this.buffer = new FixedArray<byte>(this.longestLength);
         }
 
         protected BinaryScanResult _current;
@@ -277,30 +318,42 @@ namespace Leayal.IO
         protected virtual bool ScannerRead()
         {
             int reading = this.scanner.BaseStream.ReadByte();
+            MatchResult matchResult;
             while (reading > -1)
             {
                 this.buffer.Push((byte)reading);
                 if (!this.scanner.IsProgressPercentageEventNull())
                     this.scanner.RaiseProgressPercentageEvent((byte)Convert.ToInt32((this.scanner.BaseStream.Position * 100d) / this.scanner.BaseStream.Length));
-                if (this.buffer.Count == this.bytesToScan.Length)
-                    if (this.IsMatch(this.buffer.GetArray()))
+                if (this.buffer.Count == this.longestLength)
+                {
+                    matchResult = this.IsMatch(this.buffer.GetArray());
+                    if (matchResult.Index != -1)
                     {
-                        byte[] result = new byte[this.bytesToScan.Length];
-                        this.buffer.CopyTo(result);
-                        this._current = new BinaryScanResult(this.scanner.BaseStream, this.scanner.BaseStream.Position - this.bytesToScan.Length, result);
+                        this._current = new BinaryScanResult(this.scanner.BaseStream, this.scanner.BaseStream.Position - this.longestLength + matchResult.Index, matchResult.Matched);
                         return true;
                     }
+                }
                 reading = this.scanner.BaseStream.ReadByte();
             }
             return false;
         }
 
-        protected bool IsMatch(byte[] target)
+        protected MatchResult IsMatch(byte[] target)
         {
-            for (int i = 0; i < this.bytesToScan.Length; i++)
-                if (target[i] != this.bytesToScan[i])
-                    return false;
-            return true;
+            int result = -1;
+            for (int scanningIndex = 0; scanningIndex < this.bytesToScan.Length; scanningIndex++)
+            {
+                result = ByteHelper.IndexOf(target, this.bytesToScan[scanningIndex]);
+                if (result != -1)
+                    return new MatchResult() { Index = result, Matched = this.bytesToScan[scanningIndex] };
+            }
+            return new MatchResult() { Index = result };
+        }
+
+        protected struct MatchResult
+        {
+            public int Index;
+            public byte[] Matched;
         }
 
         public void Reset()

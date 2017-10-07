@@ -53,6 +53,54 @@ namespace Leayal
                     throw new InvalidHexString($"'{strs[i]}' is not a hex.");
             return bytes;
         }
+
+        public static bool Contains(this byte[] source, params byte[] comparing)
+        {
+            return (IndexOf(source, comparing) > -1);
+        }
+
+        public static bool Contains(this byte[] source, int startIndex, params byte[] comparing)
+        {
+            return (IndexOf(source, startIndex, comparing) > -1);
+        }
+
+        public static int IndexOf(this byte[] source, params byte[] comparing)
+        {
+            return IndexOf(source, 0, comparing);
+        }
+
+        public static int IndexOf(this byte[] source, int startIndex, params byte[] comparing)
+        {
+            int result = -1;
+            int lengthLeft = source.Length - startIndex;
+            if (lengthLeft == comparing.Length)
+            {
+                result = 0;
+                for (int i = startIndex; i < lengthLeft; i++)
+                    if (source[i] != comparing[i])
+                    {
+                        result = -1;
+                        break;
+                    }
+            }
+            else if (lengthLeft > comparing.Length)
+            {
+                int prefix = source.Length - comparing.Length;
+                for (int offset = 0; offset <= prefix; offset++)
+                {
+                    result = offset;
+                    for (int i = startIndex; i < comparing.Length; i++)
+                        if (source[offset + i] != comparing[i])
+                        {
+                            result = -1;
+                            break;
+                        }
+                    if (result != -1)
+                        break;
+                }
+            }
+            return result;
+        }
     }
 
     public class InvalidHexString : Exception
