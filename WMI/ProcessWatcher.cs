@@ -3,22 +3,23 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Management;
 using System.IO;
+using System.Collections.Generic;
 
 namespace Leayal.WMI
 {
     /// <summary>
     /// May require Administration or elevated access.
     /// </summary>
-    public class ProcessesWatcher : IDisposable
+    public sealed class ProcessWatcherManager : IDisposable
     {
 
-        private static ProcessesWatcher _instance;
-        public static ProcessesWatcher Instance
+        private static ProcessWatcherManager _instance;
+        public static ProcessWatcherManager Instance
         {
             get
             {
                 if (_instance == null)
-                    _instance = new ProcessesWatcher();
+                    _instance = new ProcessWatcherManager();
                 return _instance;
             }
         }
@@ -29,7 +30,7 @@ namespace Leayal.WMI
         }
 
         private ConcurrentDictionary<string, ProcessWatcher> myDict;
-        public ProcessesWatcher()
+        public ProcessWatcherManager()
         {
             this.myDict = new ConcurrentDictionary<string, ProcessWatcher>(StringComparer.OrdinalIgnoreCase);
         }
@@ -69,9 +70,197 @@ namespace Leayal.WMI
     }
 
     /// <summary>
-    /// May require Administration or elevated access. This class should be disposed if you're finished with it.
+    /// Provides a process listener that will raise even whenever any processes match the search. May require Administration or elevated access. This class should be disposed if you're finished with it.
     /// </summary>
-    public class ProcessWatcher : IDisposable
+    public sealed class ProcessesWatcher : IDisposable
+    {
+        private bool _islistening, isProcessNameOnly;
+        public bool IsListening => this._islistening;
+        public bool HasProcesses => (this.ProcessesCount != 0);
+        public int ProcessesCount => this.processList.Count;
+
+        private Dictionary<Process, string> processList;
+
+        public IEnumerable<Process> Processes => this.processList.Keys;
+
+        private string _ProcessPath;
+        public string ProcessPath
+        {
+            get { return this._ProcessPath; }
+        }
+
+        private ManagementEventWatcher processStartEvent;
+
+        private void CreateManagementEventWatcher(string processPath)
+        {
+            if (this.processStartEvent != null)
+            {
+                this.processStartEvent.EventArrived -= processStartEvent_EventArrived;
+                this.processStartEvent.Dispose();
+            }
+            this._ProcessPath = processPath;
+            this.processStartEvent = new ManagementEventWatcher("SELECT ProcessID FROM Win32_ProcessStartTrace WHERE ProcessName = '" + Path.GetFileName(processPath) + "'");
+            if (this.processStartEvent != null)
+                this.processStartEvent.EventArrived += processStartEvent_EventArrived;
+        }
+
+        public ProcessesWatcher(string processPath)
+        {
+            this._islistening = false;
+            this.isProcessNameOnly = (processPath.IsEqual(Path.GetFileName(processPath), true));
+            this._ProcessPath = processPath;
+            this.processList = new Dictionary<Process, string>();
+            this.CreateManagementEventWatcher(processPath);
+        }
+
+        /// <summary>
+        /// Start listening for process launching. This method will raise the event <see cref="ProcessLaunched"/> if it find any processes which are running before <see cref="ProcessesWatcher"/> listens.
+        /// </summary>
+        public void StartListen()
+        {
+            if (this.IsListening)
+                throw new InvalidOperationException();
+
+            this._islistening = true;
+
+            Process[] myList = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(this.ProcessPath));
+            if (myList != null && myList.Length > 0)
+            {
+                string currentprocessPath;
+                if (!this.isProcessNameOnly)
+                {
+                    for (int i = 0; i <= myList.Length - 1; i++)
+                    {
+                        currentprocessPath = ProcessHelper.GetProcessImagePath(myList[i]);
+                        if (currentprocessPath.IsEqual(this.ProcessPath, true))
+                            this.ProcessAdd(myList[i], currentprocessPath);
+                        else
+                            myList[i].Dispose();
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i <= myList.Length - 1; i++)
+                    {
+                        currentprocessPath = ProcessHelper.GetProcessImagePath(myList[i]);
+                        if (currentprocessPath.EndsWith(this.ProcessPath, StringComparison.OrdinalIgnoreCase))
+                            this.ProcessAdd(myList[i], currentprocessPath);
+                        else
+                            myList[i].Dispose();
+                    }
+                }
+                myList = null;
+            }
+            
+            this.processStartEvent.Start();
+        }
+
+        public void StopListen()
+        {
+            if (!this.IsListening)
+                throw new InvalidOperationException();
+
+            this.processStartEvent.Stop();
+            this.Cleanup();
+
+            this._islistening = false;
+        }
+
+        private void ProcessAdd(Process proc, string fullfilepath)
+        {
+            this.processList.Add(proc, fullfilepath);
+            proc.EnableRaisingEvents = true;
+            proc.Exited += this.Proc_Exited;
+        }
+
+        private void Proc_Exited(object sender, EventArgs e)
+        {
+            Process proc = sender as Process;
+            if (proc != null)
+            {
+                string fetch_before_removing = this.processList[proc];
+                this.ProcessRemove(proc);
+                this.OnProcessExited(new ProcessEventArgs(proc, fetch_before_removing));
+            }
+        }
+
+        private void ProcessRemove(Process proc)
+        {
+            proc.Exited -= this.Proc_Exited;
+            proc.Dispose();
+            this.processList.Remove(proc);
+        }
+
+        private void Cleanup()
+        {
+            foreach (Process proc in this.processList.Keys)
+                proc.Dispose();
+            this.processList.Clear();
+        }
+
+        private void processStartEvent_EventArrived(object sender, EventArrivedEventArgs e)
+        {
+            try
+            {
+                int myProcID = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
+                string pathString = Leayal.ProcessHelper.GetProcessImagePath(myProcID);
+                if (!string.IsNullOrEmpty(pathString))
+                {
+                    if (this.isProcessNameOnly)
+                    {
+                        if (pathString.EndsWith(this.ProcessPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            Process proc = Process.GetProcessById(myProcID);
+                            this.ProcessAdd(proc, pathString);
+                            this.OnProcessLaunched(new ProcessEventArgs(proc, pathString));
+                        }
+                    }
+                    else
+                    {
+                        if (pathString.IsEqual(this.ProcessPath, true))
+                        {
+                            Process proc = Process.GetProcessById(myProcID);
+                            this.ProcessAdd(proc, pathString);
+                            this.OnProcessLaunched(new ProcessEventArgs(proc, pathString));
+                        }
+                    }
+                }
+            }
+            catch (ArgumentException)
+            { }
+        }
+        /// <summary>
+        /// Will be raised whenever a process, which is in matched process list, exits.
+        /// </summary>
+        public event EventHandler<ProcessEventArgs> ProcessExited;
+        private void OnProcessExited(ProcessEventArgs e)
+        {
+            this.ProcessExited?.Invoke(this, e);
+        }
+        /// <summary>
+        /// Will be raised whenver any process match the search starting up.
+        /// </summary>
+        public event EventHandler<ProcessEventArgs> ProcessLaunched;
+        private void OnProcessLaunched(ProcessEventArgs e)
+        {
+            this.ProcessLaunched?.Invoke(this, e);
+        }
+
+        public void Dispose()
+        {
+            if ((this.processStartEvent != null))
+            {
+                this.StopListen();
+                this.processStartEvent.Dispose();
+            }
+            this.processStartEvent = null;
+        }
+    }
+
+    /// <summary>
+    /// Provides a process listener that will raise even whenever a process match the search. May require Administration or elevated access. This class should be disposed if you're finished with it.
+    /// </summary>
+    public sealed class ProcessWatcher : IDisposable
     {
         public bool IsRunning
         {
@@ -92,7 +281,7 @@ namespace Leayal.WMI
         {
             get { return withEventsField__ProcessInstance; }
             set
-            {
+            {   
                 if (withEventsField__ProcessInstance != null)
                 {
                     withEventsField__ProcessInstance.Exited -= _ProcessInstance_Exited;
@@ -254,12 +443,12 @@ namespace Leayal.WMI
         }
 
         public event EventHandler ProcessExited;
-        protected virtual void OnProcessExited(EventArgs e)
+        private void OnProcessExited(EventArgs e)
         {
             this.ProcessExited?.Invoke(this, e);
         }
         public event EventHandler ProcessLaunched;
-        protected virtual void OnProcessLaunched(EventArgs e)
+        private void OnProcessLaunched(EventArgs e)
         {
             this.ProcessLaunched?.Invoke(this, e);
         }
@@ -278,6 +467,18 @@ namespace Leayal.WMI
                 this.processStartEvent.Dispose();
             }
             this.processStartEvent = null;
+        }
+    }
+    
+    public class ProcessEventArgs : EventArgs
+    {
+        public Process Process { get; }
+        public string ProcessFullFilename { get; }
+
+        internal ProcessEventArgs(Process proc, string fullfilename) : base()
+        {
+            this.Process = proc;
+            this.ProcessFullFilename = fullfilename;
         }
     }
 }
