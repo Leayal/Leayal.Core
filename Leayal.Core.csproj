@@ -62,6 +62,11 @@
     <Compile Include="Log\Enums.cs" />
     <Compile Include="MoreMath.cs" />
     <Compile Include="NativeMethods.cs" />
+    <Compile Include="Native\FreeLibraryException.cs" />
+    <Compile Include="Native\FunctionNotFoundException.cs" />
+    <Compile Include="Native\NativeLibrary.cs" />
+    <Compile Include="Native\NativeLibraryLoadException.cs" />
+    <Compile Include="Native\NativeLibraryManager.cs" />
     <Compile Include="Net\CacheResponse.cs" />
     <Compile Include="Net\DownloadFileProgressChangedEventArgs.cs" />
     <Compile Include="Net\DownloadInfo.cs" />
