@@ -22,7 +22,7 @@ namespace Leayal.Net
         public CacheInfo GetCacheFromURL(System.Uri _url)
         {
             if (disposed) throw new ObjectDisposedException("CacheStorage");
-            var cacheID = Security.Cryptography.SHA256Wrapper.FromString(_url.AbsoluteUri);
+            var cacheID = Security.Cryptography.SHA256Wrapper.HashFromString(_url.AbsoluteUri);
             if (string.IsNullOrWhiteSpace(cacheID)) return null;
             cacheID = cacheID.ToLower();
             if (this.innerDict.ContainsKey(cacheID))

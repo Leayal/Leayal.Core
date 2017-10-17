@@ -5,22 +5,22 @@ namespace Leayal.Security.Cryptography
 {
     public static class SHA1Wrapper
     {
-        public static string FromFile(FileInfo fileinfo)
+        public static string HashFromFile(FileInfo fileinfo)
         {
-            return FromFile(fileinfo, 4096);
+            return HashFromFile(fileinfo, 4096);
         }
 
-        public static string FromFile(string path)
+        public static string HashFromFile(string path)
         {
-            return FromFile(path, 4096);
+            return HashFromFile(path, 4096);
         }
 
-        public static string FromFile(FileInfo fileinfo, int buffersize)
+        public static string HashFromFile(FileInfo fileinfo, int buffersize)
         {
-            return FromFile(fileinfo.FullName);
+            return HashFromFile(fileinfo.FullName, buffersize);
         }
 
-        public static string FromFile(string path, int buffersize)
+        public static string HashFromFile(string path, int buffersize)
         {
             string result = null;
             using (SHA1 sha = SHA1.Create())
@@ -33,7 +33,7 @@ namespace Leayal.Security.Cryptography
             return result;
         }
 
-        public static string FromStream(Stream contentStream)
+        public static string HashFromStream(Stream contentStream)
         {
             string result = null;
             using (SHA1 sha = SHA1.Create())
@@ -45,19 +45,12 @@ namespace Leayal.Security.Cryptography
             return result;
         }
 
-        public static string FromContent(byte[] content)
+        public static string HashFromContent(byte[] content)
         {
-            string result = null;
-            using (SHA1 sha = SHA1.Create())
-            using (BytesConverter bc = new BytesConverter())
-            {
-                result = bc.ToHexString(sha.ComputeHash(content));
-                sha.Clear();
-            }
-            return result;
+            return HashFromContent(content, 0, content.Length);
         }
 
-        public static string FromContent(byte[] content, int offset, int count)
+        public static string HashFromContent(byte[] content, int offset, int count)
         {
             string result = null;
             using (SHA1 sha = SHA1.Create())
@@ -69,19 +62,12 @@ namespace Leayal.Security.Cryptography
             return result;
         }
 
-        public static string FromString(TextReader contentReader)
+        public static string HashFromString(TextReader contentReader)
         {
-            string result = null;
-            using (SHA1 sha = SHA1.Create())
-            using (BytesConverter bc = new BytesConverter())
-            {
-                result = bc.ToHexString(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(contentReader.ReadToEnd())));
-                sha.Clear();
-            }
-            return result;
+            return HashFromString(contentReader.ReadToEnd());
         }
 
-        public static string FromString(string content)
+        public static string HashFromString(string content)
         {
             string result = null;
             using (SHA1 sha = SHA1.Create())

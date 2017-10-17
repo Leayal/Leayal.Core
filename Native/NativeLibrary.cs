@@ -22,12 +22,14 @@ namespace Leayal.Native
         public void Dispose()
         {
             if (this._disposed) return;
-            this._disposed = true;
 
             if (!NativeMethods.FreeLibrary(this.hModule))
                 throw new FreeLibraryException("An unknown error has occurred while freeing this library. May be it is still in use.");
             else
+            {
+                this._disposed = true;
                 NativeLibraryManager.RemoveFromCache(this);
+            }
         }
 
         public Delegate GetFunction<T>(string functionName)
