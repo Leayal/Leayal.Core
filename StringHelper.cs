@@ -279,7 +279,7 @@ namespace Leayal
                 else
                 {
                     if (s.Length == str.Length)
-                        return (string.Compare(s, str, ignoreCase) == 0);
+                        return string.Equals(s, str, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
                     else
                         return false;
                 }

@@ -51,6 +51,7 @@
     <Compile Include="ByteHelper.cs" />
     <Compile Include="Collections\FixedArray.cs" />
     <Compile Include="Collections\IEnumeratorWalker.cs" />
+    <Compile Include="EnvironmentHelper.cs" />
     <Compile Include="Ini\DuplicatedKeyCollection.cs" />
     <Compile Include="Ini\DuplicatedKeyInfo.cs" />
     <Compile Include="Ini\IniReadErrorEventArgs.cs" />
