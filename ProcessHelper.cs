@@ -10,6 +10,11 @@ namespace Leayal
 {
     public static class ProcessHelper
     {
+        public static IntPtr FindWindowByCaption(string caption)
+        {
+            return NativeMethods.FindWindow(null, caption);
+        }
+
         public static string TableStringToArgs(IEnumerable<string> arg)
         {
             if (arg != null)
